@@ -10,14 +10,7 @@
     <!-- Main Content -->
     <main class="dashboard-main">
       <div class="dashboard-grid">
-        <!-- Stats Section -->
-        <section class="stats-section">
-          <div class="stat-card">
-            <h3>Total Students</h3>
-            <p class="stat-number">{{ total }}</p>
-          </div>
-        </section>
-
+        
         <!-- Add Student Form -->
         <section class="form-section">
           <h2>Add New Student</h2>

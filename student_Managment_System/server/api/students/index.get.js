@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     const params = [];
 
     if (search) {
-      // In a real app, you might want to use full-text search, but LIKE is simple and effective for now
+
       sql += ' WHERE id LIKE ? OR name LIKE ? OR email LIKE ? OR phone LIKE ? OR course LIKE ?';
       const searchWildcard = `%${search}%`;
       params.push(searchWildcard, searchWildcard, searchWildcard, searchWildcard, searchWildcard);
