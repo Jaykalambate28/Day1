@@ -159,6 +159,30 @@ export function useStudents() {
     return response;
   };
 
+  const loadNextPage = async () => {
+    if (page.value < totalPages.value) {
+      page.value++;
+      loading.value = true;
+      const { rows, meta } = await fetchChunk(page.value, searchTerm.value);
+      students.value = rows;
+      total.value = meta.total;
+      totalPages.value = meta.totalPages;
+      loading.value = false;
+    }
+  };
+
+  const loadPreviousPage = async () => {
+    if (page.value > 1) {
+      page.value--;
+      loading.value = true;
+      const { rows, meta } = await fetchChunk(page.value, searchTerm.value);
+      students.value = rows;
+      total.value = meta.total;
+      totalPages.value = meta.totalPages;
+      loading.value = false;
+    }
+  };
+
   return {
     students,
     loading,
@@ -172,6 +196,8 @@ export function useStudents() {
     loadInitial,
     addStudent,
     updateStudent,
-    deleteStudent
+    deleteStudent,
+    loadNextPage,
+    loadPreviousPage
   };
 }

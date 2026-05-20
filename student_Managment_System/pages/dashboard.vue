@@ -145,6 +145,26 @@
                 </tr>
               </tbody>
             </table>
+            <!-- Pagination Controls -->
+            <div class="pagination-controls">
+              <button 
+                @click="loadPreviousPage" 
+                :disabled="page === 1 || loading"
+                class="btn-pagination"
+              >
+                ← Back
+              </button>
+              <span class="pagination-info">
+                Page {{ page }} of {{ totalPages }}
+              </span>
+              <button 
+                @click="loadNextPage" 
+                :disabled="page >= totalPages || loading"
+                class="btn-pagination"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </section>
 
@@ -239,7 +259,11 @@ const {
   searchTerm,
   hasMore,
   total,
+  page,
+  totalPages,
   loadInitial,
+  loadNextPage,
+  loadPreviousPage,
   addStudent: apiAddStudent,
   updateStudent: apiUpdateStudent,
   deleteStudent: apiDeleteStudent
@@ -909,5 +933,46 @@ const deleteStudent = async (id) => {
   font-weight: bold;
   letter-spacing: 0.5px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Pagination Controls */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.btn-pagination {
+  padding: 10px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.btn-pagination:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pagination-info {
+  color: #2c3e50;
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 100px;
+  text-align: center;
 }
 </style>
