@@ -72,10 +72,7 @@ export function useStudents() {
 
     loading.value = false;
 
-    // Start background loading if no search is active
-    if (hasMore.value && !searchTerm.value) {
-      startBackgroundLoading();
-    }
+    // Background loading disabled - users must click "Next" to load more pages
   };
 
   const startBackgroundLoading = async () => {

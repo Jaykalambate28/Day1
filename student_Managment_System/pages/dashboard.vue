@@ -89,13 +89,65 @@
         <!-- Students List -->
         <section class="students-section">
           <h2>Students List</h2>
-          <div class="search-bar">
-            <input
-              v-model="searchTerm"
-              type="search"
-              placeholder="Search by id, name, email, phone, or course"
-            />
-            <p class="search-info" v-if="searchTerm">
+          <div class="search-filter-container">
+            <div class="search-bar">
+              <input
+                v-model="searchTerm"
+                type="search"
+                placeholder="Search by id, name, email, phone, or course"
+              />
+            </div>
+
+            <!-- Filter Options -->
+            <div class="filter-panel">
+              <div class="filter-group">
+                <label>Filter by Course:</label>
+                <select v-model="filterCourse">
+                  <option value="">All Courses</option>
+                  <option v-for="course in uniqueCourses" :key="course" :value="course">
+                    {{ course }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label>Created Date:</label>
+                <div class="date-range">
+                  <input
+                    v-model="filterCreatedFrom"
+                    type="date"
+                    placeholder="From"
+                  />
+                  <span class="separator">→</span>
+                  <input
+                    v-model="filterCreatedTo"
+                    type="date"
+                    placeholder="To"
+                  />
+                </div>
+              </div>
+
+              <div class="filter-group">
+                <label>Admission Date:</label>
+                <div class="date-range">
+                  <input
+                    v-model="filterAdmissionFrom"
+                    type="date"
+                    placeholder="From"
+                  />
+                  <span class="separator">→</span>
+                  <input
+                    v-model="filterAdmissionTo"
+                    type="date"
+                    placeholder="To"
+                  />
+                </div>
+              </div>
+
+              <button @click="clearFilters" class="btn-clear-filters">Clear Filters</button>
+            </div>
+
+            <p class="search-info" v-if="searchTerm || filterCourse || filterCreatedFrom || filterCreatedTo || filterAdmissionFrom || filterAdmissionTo">
               Showing {{ filteredStudents.length }} of {{ students.length }} students
             </p>
           </div>
@@ -290,6 +342,13 @@ const newStudent = ref({
   created_at: getTodayDateStr(),
 });
 
+// Filter state
+const filterCourse = ref('');
+const filterCreatedFrom = ref('');
+const filterCreatedTo = ref('');
+const filterAdmissionFrom = ref('');
+const filterAdmissionTo = ref('');
+
 const handlePhotoUpload = (e, type) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -331,10 +390,55 @@ const getInitials = (name) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-// When searching, the server provides matches across the whole DB. Otherwise show loaded students.
-const filteredStudents = computed(() => {
-  return students.value;
+// Get unique courses for filter dropdown
+const uniqueCourses = computed(() => {
+  const courses = new Set(students.value.map(s => s.course).filter(Boolean));
+  return Array.from(courses).sort();
 });
+
+// Apply filters to students
+const filteredStudents = computed(() => {
+  return students.value.filter(student => {
+    // Course filter
+    if (filterCourse.value && student.course !== filterCourse.value) {
+      return false;
+    }
+    
+    // Created date range filter
+    if (filterCreatedFrom.value) {
+      const fromDate = new Date(filterCreatedFrom.value);
+      const createdDate = new Date(student.created_at);
+      if (createdDate < fromDate) return false;
+    }
+    if (filterCreatedTo.value) {
+      const toDate = new Date(filterCreatedTo.value);
+      const createdDate = new Date(student.created_at);
+      if (createdDate > toDate) return false;
+    }
+    
+    // Admission date range filter
+    if (filterAdmissionFrom.value) {
+      const fromDate = new Date(filterAdmissionFrom.value);
+      const admissionDate = new Date(student.admission_date);
+      if (admissionDate < fromDate) return false;
+    }
+    if (filterAdmissionTo.value) {
+      const toDate = new Date(filterAdmissionTo.value);
+      const admissionDate = new Date(student.admission_date);
+      if (admissionDate > toDate) return false;
+    }
+    
+    return true;
+  });
+});
+
+const clearFilters = () => {
+  filterCourse.value = '';
+  filterCreatedFrom.value = '';
+  filterCreatedTo.value = '';
+  filterAdmissionFrom.value = '';
+  filterAdmissionTo.value = '';
+};
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -633,6 +737,87 @@ const deleteStudent = async (id) => {
   font-size: 13px;
 }
 
+/* Filter Panel Styles */
+.search-filter-container {
+  margin-bottom: 20px;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #ecf0f1;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+  padding: 8px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: white;
+}
+
+.filter-group select:focus,
+.filter-group input[type="date"]:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.2);
+}
+
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-range input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.date-range .separator {
+  color: #95a5a6;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.btn-clear-filters {
+  padding: 8px 12px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  align-self: flex-end;
+  transition: background-color 0.2s;
+}
+
+.btn-clear-filters:hover {
+  background-color: #c0392b;
+}
+
 .loading {
   text-align: center;
   color: #7f8c8d;
@@ -854,7 +1039,7 @@ const deleteStudent = async (id) => {
   padding: 10px 16px;
   background-color: #f1f2f6;
   color: #2c3e50;
-  border: 2px dashed #bdc3c7;
+  border: 2px dashed #0a93ee;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
