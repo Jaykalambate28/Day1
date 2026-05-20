@@ -4,7 +4,6 @@
     <header class="dashboard-header">
       <div class="header-content">
         <h1>Student Management Dashboard</h1>
-        <button @click="handleLogout" class="btn-logout">Logout</button>
       </div>
     </header>
 
@@ -15,7 +14,7 @@
         <section class="stats-section">
           <div class="stat-card">
             <h3>Total Students</h3>
-            <p class="stat-number">{{ students.length }}</p>
+            <p class="stat-number">{{ total }}</p>
           </div>
         </section>
 
@@ -58,6 +57,35 @@
                   required
                 />
               </div>
+              <div class="date-input-container">
+                <label class="input-label">Created At</label>
+                <input
+                  v-model="newStudent.created_at"
+                  type="date"
+                  required
+                />
+              </div>
+            </div>
+            <div class="form-row photo-row">
+              <div class="photo-input-container">
+                <label class="input-label">Student Photo</label>
+                <div class="photo-input-wrapper">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    @change="handlePhotoUpload($event, 'add')"
+                    id="add-photo-input"
+                    class="photo-file-input"
+                  />
+                  <div v-if="photoPreview" class="preview-box">
+                    <img :src="photoPreview" alt="Preview" class="avatar-preview" />
+                    <button type="button" @click="clearPhoto('add')" class="btn-clear-photo">Remove</button>
+                  </div>
+                  <label v-else for="add-photo-input" class="photo-upload-label">
+                    <span>Choose Photo</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <button type="submit" class="btn-add">Add Student</button>
           </form>
@@ -90,10 +118,12 @@
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Photo</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Course</th>
+                  <th>Created At</th>
                   <th>Admission Date</th>
                   <th>Actions</th>
                 </tr>
@@ -101,10 +131,19 @@
               <tbody>
                 <tr v-for="student in filteredStudents" :key="student.id">
                   <td>{{ student.id }}</td>
+                  <td>
+                    <div class="avatar-container">
+                      <img v-if="student.photo" :src="student.photo" alt="Student Photo" class="student-avatar" />
+                      <div v-else class="student-avatar-placeholder">
+                        {{ getInitials(student.name) }}
+                      </div>
+                    </div>
+                  </td>
                   <td>{{ student.name }}</td>
                   <td>{{ student.email }}</td>
                   <td>{{ student.phone || '-' }}</td>
                   <td>{{ student.course || '-' }}</td>
+                  <td>{{ formatDate(student.created_at) }}</td>
                   <td>{{ formatDate(student.admission_date) }}</td>
                   <td class="actions">
                     <button @click="editStudent(student)" class="btn-edit">Edit</button>
@@ -163,6 +202,25 @@
                   required
                 />
               </div>
+              <div class="form-field-wrapper">
+                <label class="modal-field-label">Student Photo</label>
+                <div class="photo-input-wrapper">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    @change="handlePhotoUpload($event, 'edit')"
+                    id="edit-photo-input"
+                    class="photo-file-input"
+                  />
+                  <div v-if="editPhotoPreview || editingStudent.photo" class="preview-box">
+                    <img :src="editPhotoPreview || editingStudent.photo" alt="Preview" class="avatar-preview" />
+                    <button type="button" @click="clearPhoto('edit')" class="btn-clear-photo">Remove</button>
+                  </div>
+                  <label v-else for="edit-photo-input" class="photo-upload-label">
+                    <span>Choose Photo</span>
+                  </label>
+                </div>
+              </div>
               <div class="modal-actions">
                 <button type="submit" class="btn-save">Save</button>
                 <button type="button" @click="editingStudent = null" class="btn-cancel">Cancel</button>
@@ -177,17 +235,34 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useStudents } from '~/composables/useStudents';
 
-const students = ref([]);
-const loading = ref(true);
+// Use the composable for paginated/background loading and server-side search
+const {
+  students,
+  loading,
+  backgroundLoading,
+  error,
+  searchTerm,
+  hasMore,
+  total,
+  loadInitial,
+  addStudent: apiAddStudent,
+  updateStudent: apiUpdateStudent,
+  deleteStudent: apiDeleteStudent
+} = useStudents();
+
 const successMessage = ref('');
 const errorMessage = ref('');
 const editingStudent = ref(null);
-const searchTerm = ref('');
 
-const getTodayDateStr = () => {
-  return new Date().toISOString().split('T')[0];
-};
+// Photo upload reactive state
+const photoFile = ref(null);
+const photoPreview = ref(null);
+const editPhotoFile = ref(null);
+const editPhotoPreview = ref(null);
+
+const getTodayDateStr = () => new Date().toISOString().split('T')[0];
 
 const newStudent = ref({
   name: '',
@@ -195,26 +270,53 @@ const newStudent = ref({
   phone: '',
   course: '',
   admission_date: getTodayDateStr(),
+  created_at: getTodayDateStr(),
 });
 
+const handlePhotoUpload = (e, type) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    if (type === 'add') {
+      photoFile.value = file;
+      photoPreview.value = event.target.result;
+    } else {
+      editPhotoFile.value = file;
+      editPhotoPreview.value = event.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+const clearPhoto = (type) => {
+  if (type === 'add') {
+    photoFile.value = null;
+    photoPreview.value = null;
+    const input = document.getElementById('add-photo-input');
+    if (input) input.value = '';
+  } else {
+    editPhotoFile.value = null;
+    editPhotoPreview.value = null;
+    if (editingStudent.value) editingStudent.value.photo = null; // Mark photo as deleted
+    const input = document.getElementById('edit-photo-input');
+    if (input) input.value = '';
+  }
+};
+
+const getInitials = (name) => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// When searching, the server provides matches across the whole DB. Otherwise show loaded students.
 const filteredStudents = computed(() => {
-  const query = searchTerm.value.trim().toLowerCase();
-  if (!query) return students.value;
-
-  return students.value.filter((student) => {
-    const values = [
-      student.id,
-      student.name,
-      student.email,
-      student.phone,
-      student.course,
-      student.admission_date,
-    ];
-
-    return values.some((value) =>
-      String(value || '').toLowerCase().includes(query)
-    );
-  });
+  return students.value;
 });
 
 const formatDate = (dateStr) => {
@@ -223,25 +325,9 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-// Fetch students on mount
 onMounted(async () => {
-  await fetchStudents();
+  await loadInitial();
 });
-
-// Fetch all students
-const fetchStudents = async () => {
-  try {
-    loading.value = true;
-    const response = await fetch('/api/students');
-    if (response.ok) {
-      students.value = await response.json();
-    }
-  } catch (err) {
-    errorMessage.value = 'Failed to fetch students';
-  } finally {
-    loading.value = false;
-  }
-};
 
 // Add new student
 const addStudent = async () => {
@@ -249,11 +335,18 @@ const addStudent = async () => {
     errorMessage.value = '';
     successMessage.value = '';
 
-    const response = await fetch('/api/students', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newStudent.value),
-    });
+    const formData = new FormData();
+    formData.append('name', newStudent.value.name);
+    formData.append('email', newStudent.value.email);
+    formData.append('phone', newStudent.value.phone || '');
+    formData.append('course', newStudent.value.course || '');
+    formData.append('admission_date', newStudent.value.admission_date);
+    formData.append('created_at', newStudent.value.created_at);
+    if (photoFile.value) {
+      formData.append('photo', photoFile.value);
+    }
+
+    const response = await apiAddStudent(formData);
 
     if (response.ok) {
       successMessage.value = 'Student added successfully!';
@@ -263,14 +356,18 @@ const addStudent = async () => {
         phone: '',
         course: '',
         admission_date: getTodayDateStr(),
+        created_at: getTodayDateStr()
       };
-      await fetchStudents();
+      photoFile.value = null;
+      photoPreview.value = null;
+      const input = document.getElementById('add-photo-input');
+      if (input) input.value = '';
       setTimeout(() => (successMessage.value = ''), 3000);
     } else {
       errorMessage.value = 'Failed to add student';
     }
   } catch (err) {
-    errorMessage.value = 'Error adding student';
+    errorMessage.value = err.message || 'Error adding student';
   }
 };
 
@@ -278,21 +375,39 @@ const addStudent = async () => {
 const editStudent = (student) => {
   const formattedDate = student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : '';
   editingStudent.value = { ...student, admission_date: formattedDate };
+  editPhotoFile.value = null;
+  editPhotoPreview.value = null;
 };
 
 // Update student
 const updateStudent = async () => {
   try {
-    const response = await fetch(`/api/students/${editingStudent.value.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editingStudent.value),
-    });
+    errorMessage.value = '';
+    successMessage.value = '';
+
+    const formData = new FormData();
+    formData.append('name', editingStudent.value.name);
+    formData.append('email', editingStudent.value.email);
+    formData.append('phone', editingStudent.value.phone || '');
+    formData.append('course', editingStudent.value.course || '');
+    formData.append('admission_date', editingStudent.value.admission_date);
+    
+    if (editPhotoFile.value) {
+      formData.append('photo', editPhotoFile.value);
+    } else if (editingStudent.value.photo) {
+      formData.append('photo', editingStudent.value.photo);
+    } else {
+      formData.append('photo', '');
+    }
+
+    const response = await apiUpdateStudent(editingStudent.value.id, formData);
 
     if (response.ok) {
       successMessage.value = 'Student updated successfully!';
       editingStudent.value = null;
-      await fetchStudents();
+      editPhotoFile.value = null;
+      editPhotoPreview.value = null;
+      await loadInitial();
       setTimeout(() => (successMessage.value = ''), 3000);
     } else {
       errorMessage.value = 'Failed to update student';
@@ -306,13 +421,11 @@ const updateStudent = async () => {
 const deleteStudent = async (id) => {
   if (confirm('Are you sure you want to delete this student?')) {
     try {
-      const response = await fetch(`/api/students/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await apiDeleteStudent(id);
 
       if (response.ok) {
         successMessage.value = 'Student deleted successfully!';
-        await fetchStudents();
+        await loadInitial();
         setTimeout(() => (successMessage.value = ''), 3000);
       } else {
         errorMessage.value = 'Failed to delete student';
@@ -321,11 +434,6 @@ const deleteStudent = async (id) => {
       errorMessage.value = 'Error deleting student';
     }
   }
-};
-
-// Logout
-const handleLogout = () => {
-  navigateTo('/');
 };
 </script>
 
@@ -356,21 +464,6 @@ const handleLogout = () => {
 .dashboard-header h1 {
   margin: 0;
   font-size: 28px;
-}
-
-.btn-logout {
-  padding: 10px 20px;
-  background-color: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.btn-logout:hover {
-  background-color: #c0392b;
 }
 
 /* Main */
@@ -715,5 +808,113 @@ const handleLogout = () => {
     gap: 15px;
     align-items: flex-start;
   }
+}
+
+/* Photo Upload Styles */
+.photo-row {
+  grid-column: span 2;
+}
+
+.photo-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+}
+
+.photo-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 5px;
+}
+
+.photo-file-input {
+  display: none;
+}
+
+.photo-upload-label {
+  padding: 10px 16px;
+  background-color: #f1f2f6;
+  color: #2c3e50;
+  border: 2px dashed #bdc3c7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.photo-upload-label:hover {
+  background-color: #e2e4eb;
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.preview-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #3498db;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.btn-clear-photo {
+  padding: 5px 10px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.btn-clear-photo:hover {
+  background-color: #c0392b;
+}
+
+/* Datatable Avatar Styles */
+.avatar-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.student-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ecf0f1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.student-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #3498db;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 </style>

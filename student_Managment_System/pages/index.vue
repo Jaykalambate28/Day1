@@ -1,72 +1,21 @@
+<script setup>
+// Redirect to dashboard on page load
+definePageMeta({
+  layout: false
+});
+
+useHead({
+  title: 'Redirecting...'
+});
+
+navigateTo('/dashboard', { redirectCode: 301 });
+</script>
+
 <template>
-  <div class="page-container">
-    <!-- Basic Light Navigation Bar -->
-    <header class="navbar">
-      <h1>Student Management System</h1>
-    </header>
-
-    <main class="login-main">
-      <div class="login-box">
-        <h2>Admin Login</h2>
-        <p class="subtitle">Please enter your credentials to log in.</p>
-
-        <form @submit.prevent="handleLogin">
-          <div class="form-field">
-            <label for="email">Email</label>
-            <input 
-              v-model="email" 
-              type="email" 
-              id="email" 
-              placeholder="admin@student.com" 
-              required 
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="password">Password</label>
-            <input 
-              v-model="password" 
-              type="password" 
-              id="password" 
-              placeholder="Password" 
-              required 
-            />
-          </div>
-
-          <p v-if="loginError" class="error-msg">{{ loginError }}</p>
-
-          <button type="submit" class="btn-login">Login</button>
-        </form>
-
-        <div v-if="users" class="users-debug" style="margin-top:16px">
-          <h3>Users (debug)</h3>
-          <pre>{{ users }}</pre>
-        </div>
-      </div>
-    </main>
+  <div style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+    <p>Redirecting to dashboard...</p>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue';
-
-const email = ref('');
-const password = ref('');
-const loginError = ref('');
-
-const handleLogin = () => {
-  loginError.value = '';
-
-  if (email.value === 'admin@student.com' && password.value === 'admin123') {
-    navigateTo('/dashboard');
-  } else {
-    loginError.value = 'Wrong email or password! Use: admin@student.com / admin123';
-  }
-};
-
-// Fetch users (avoid naming conflict with `loginError`)
-const { data: users, error: fetchError } = await useFetch('/api/users');
-</script>
 
 <style scoped>
 .page-container {
