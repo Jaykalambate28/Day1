@@ -14,7 +14,7 @@ export function getPool() {
       connectionLimit: 10,
       queueLimit: 0,
       enableKeepAlive: true,
-      keepAliveInitialDelayMs: 0
+      keepAliveInitialDelay: 0
     });
     
     console.log('MySQL Connection Pool created for student_db');
