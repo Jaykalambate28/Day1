@@ -390,13 +390,13 @@ const getInitials = (name) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-// Get unique courses for filter dropdown
+
 const uniqueCourses = computed(() => {
   const courses = new Set(students.value.map(s => s.course).filter(Boolean));
   return Array.from(courses).sort();
 });
 
-// Apply filters to students
+
 const filteredStudents = computed(() => {
   return students.value.filter(student => {
     // Course filter
@@ -415,8 +415,7 @@ const filteredStudents = computed(() => {
       const createdDate = new Date(student.created_at);
       if (createdDate > toDate) return false;
     }
-    
-    // Admission date range filter
+
     if (filterAdmissionFrom.value) {
       const fromDate = new Date(filterAdmissionFrom.value);
       const admissionDate = new Date(student.admission_date);
@@ -492,7 +491,7 @@ const addStudent = async () => {
   }
 };
 
-// Edit student
+
 const editStudent = (student) => {
   const formattedDate = student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : '';
   editingStudent.value = { ...student, admission_date: formattedDate };
